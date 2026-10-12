@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zippee Last Mile Operations & Active Rider Suite</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.95);
+      --border: #334155;
+      --accent-blue: #38bdf8;
+      --accent-green: #4ade80;
+      --accent-yellow: #facc15;
+      --accent-red: #f87171;
+      --text-main: #ffffff;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    body { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); color: var(--text-main); padding: 18px; min-height: 100vh; }
+    .container { max-width: 1350px; margin: 0 auto; }
+    
+    .card { background: var(--card-bg); padding: 22px; border-radius: 16px; border: 1px solid var(--border); margin-bottom: 18px; backdrop-filter: blur(10px); }
+    h1 { font-size: 26px; background: linear-gradient(90deg, #38bdf8, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 6px; }
+    .badge { display: inline-block; background: linear-gradient(90deg, #0284c7, #7c3aed); color: #fff; padding: 5px 14px; border-radius: 20px; font-weight: 600; font-size: 12px; margin-bottom: 10px; }
+    
+    .btn-group { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 14px; }
+    .btn { border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-blue { background: linear-gradient(90deg, #0284c7, #0ea5e9); color: white; }
+    .btn-orange { background: linear-gradient(90deg, #d97706, #f59e0b); color: white; }
+    .btn-green { background: linear-gradient(90deg, #16a34a, #22c55e); color: white; }
+    #csvFileInput { display: none; }
+    .note { font-size: 12px; color: var(--text-muted); margin-top: 10px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 18px; }
+    .kpi-card { background: var(--card-bg); padding: 16px; border-radius: 14px; border: 1px solid var(--border); text-align: center; }
+    .kpi-title { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+    .kpi-num { font-size: 26px; font-weight: 700; color: #fff; margin: 6px 0; }
+    .kpi-sub { font-size: 11px; font-weight: 600; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .tab { background: #334155; color: var(--text-muted); border: none; padding: 10px 18px; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 13px; }
+    .tab.active { background: linear-gradient(90deg, #0284c7, #7c3aed); color: #fff; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .filters { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+    input[type="text"] { padding: 9px 14px; border: 1px solid var(--border); border-radius: 8px; background: #0f172a; color: #fff; font-size: 13px; min-width: 250px; }
+    .table-wrap { max-height: 520px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { background: #0f172a; color: var(--accent-blue); font-weight: 600; position: sticky; top: 0; }
+    tr:hover { background: rgba(51, 65, 85, 0.6); }
+    .status-tag { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+    .green { background: rgba(74, 222, 128, 0.15); color: #4ade80; border: 1px solid #4ade80; }
+    .yellow { background: rgba(250, 204, 21, 0.15); color: #facc15; border: 1px solid #facc15; }
+    .red { background: rgba(248, 113, 113, 0.15); color: #f87171; border: 1px solid #f87171; }
+    /* PNG REPORT SPECIFIC STYLING */
+    .report-card-png { background: #ffffff; color: #1e293b; border-radius: 12px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); margin-bottom: 20px; }
+    .report-header-png { text-align: center; margin-bottom: 18px; }
+    .report-title-png { font-size: 24px; font-weight: 800; color: #0f172a; }
+    .report-time-png { font-size: 13px; color: #64748b; margin-top: 4px; font-weight: 600; }
+    
+    table.table-png { width: 100%; border-collapse: collapse; font-size: 13px; text-align: center; }
+    table.table-png th { background: #c2410c; color: #ffffff; padding: 12px 10px; font-weight: 700; white-space: nowrap; border: 1px solid #9a3412; }
+    table.table-png td { padding: 10px 8px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #f8fafc; color: #334155; }
+    table.table-png tr:hover { background-color: #f8fafc; }
+    .store-cell { text-align: left !important; font-weight: 700; color: #0f172a !important; padding-left: 14px !important; }
+    .diff-pos { background-color: #dcfce7; color: #166534 !important; font-weight: 700; }
+    .diff-neg { background-color: #fee2e2; color: #991b1b !important; font-weight: 700; }
+    .bf-highlight { color: #dc2626 !important; font-weight: 700; }
+    .png-total-row { background: #f8fafc; font-weight: 800; border-top: 2px solid #cbd5e1; }
+    .png-total-row td { color: #0f172a !important; }
+    .png-footer-text { text-align: center; font-size: 12px; color: #64748b; margin-top: 18px; font-weight: 500; }
+  </style>
+</head>
+<body>
+<div class="container">
+  
+  <div class="card" style="text-align: center;">
+    <h1>Zippee Last Mile Operations</h1>
+    <div class="badge">Naveen Kashyap • Delhi-NCR Cluster</div>
+    <div style="font-size: 13px; color: var(--text-muted);">Dark Store Hubs, Rider Directory & SASA Active Report</div>
+    <div class="btn-group">
+      <button class="btn btn-blue" onclick="document.getElementById('csvFileInput').click()">📂 Upload Detailed CSV</button>
+      <button class="btn btn-orange" onclick="showTab('activePngTab', document.getElementById('tabPngBtn'))">📊 View PNG Active Report</button>
+      <button class="btn btn-green" onclick="window.print()">📄 Print / Export PDF</button>
+    </div>
+    <input type="file" id="csvFileInput" accept=".csv" onchange="handleDetailedCSV(event)">
+    <div class="note" id="statusMsg">Detailed Report CSV upload karein ya tab badal kar reports dekhein.</div>
+  </div>
+  <!-- KPI SUMMARY -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-title">Total Orders</div>
+      <div class="kpi-num" id="kOrders">0</div>
+      <div class="kpi-sub" style="color: var(--accent-blue);">Delhi-NCR</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title">Delivered</div>
+      <div class="kpi-num" id="kDelivered" style="color: var(--accent-green);">0</div>
+      <div class="kpi-sub" style="color: var(--accent-green);" id="kDelRate">0% SLA</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title">Pending / In-Transit</div>
+      <div class="kpi-num" id="kPending" style="color: var(--accent-yellow);">0</div>
+      <div class="kpi-sub" style="color: var(--accent-yellow);">Active In Hub</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title">Attempted / NDR</div>
+      <div class="kpi-num" id="kAttempted" style="color: var(--accent-red);">0</div>
+      <div class="kpi-sub" style="color: var(--accent-red);">Re-Attempted</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title">Active Riders</div>
+      <div class="kpi-num" id="kRiders">0</div>
+      <div class="kpi-sub" style="color: var(--accent-blue);">On Duty</div>
+    </div>
+  </div>
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('activePngTab', this)" id="tabPngBtn">⚡ Active Rider Report (PNG)</button>
+    <button class="tab" onclick="showTab('hubPerf', this)">🏬 Hub Performance</button>
+    <button class="tab" onclick="showTab('riderListTab', this)">👥 Active Riders List</button>
+  </div>
+  <!-- TAB 1: PNG ACTIVE RIDER REPORT -->
+  <div id="activePngTab" class="tab-content active">
+    <div class="report-card-png">
+      <div class="report-header-png">
+        <div class="report-title-png">Active Rider Report</div>
+        <div class="report-time-png" id="pngReportTime">Time: --</div>
+      </div>
+      
+      <div class="table-wrap">
+        <table class="table-png">
+          <thead>
+            <tr>
+              <th style="text-align: left; padding-left: 14px;">Darkstore Name</th>
+              <th>Planned Riders</th>
+              <th>Active Riders</th>
+              <th>Difference</th>
+              <th>Idle Riders</th>
+              <th>Check Out Rider</th>
+              <th>Pending Orders</th>
+              <th>O/I Ratio</th>
+              <th>BF</th>
+              <th>Active + Checked Out</th>
+            </tr>
+          </thead>
+          <tbody id="pngTableBody"></tbody>
+          <tfoot>
+            <tr class="png-total-row" id="pngTableFoot"></tr>
+          </tfoot>
+        </table>
+      </div>
+      <div class="png-footer-text">Powered by SASA Automation | Data Analyst Team &lt;&gt; Zippee</div>
+    </div>
+  </div>
+  <!-- TAB 2: HUB PERFORMANCE -->
+  <div id="hubPerf" class="tab-content">
+    <div class="card">
+      <h3 style="color: var(--accent-blue); margin-bottom: 12px;">🏬 DELHI-NCR DARKSTORE METRICS</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Hub / Dark Store</th>
+              <th>Planned Riders</th>
+              <th>Active Riders</th>
+              <th>Total Orders</th>
+              <th>Delivered</th>
+              <th>Pending</th>
+              <th>Attempted</th>
+              <th>Delivery SLA %</th>
+            </tr>
+          </thead>
+          <tbody id="hubBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <!-- TAB 3: ACTIVE RIDERS DIRECTORY -->
+  <div id="riderListTab" class="tab-content">
+    <div class="card">
+      <h3 style="color: var(--accent-blue); margin-bottom: 12px;">👥 ACTIVE RIDER MASTER</h3>
+      <div class="filters">
+        <input type="text" id="riderFilter" placeholder="Search Rider Name or Phone..." oninput="renderRiderTable()">
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Hub Name</th>
+              <th>Rider Name</th>
+              <th>Phone Number</th>
+              <th>Orders Handled</th>
+            </tr>
+          </thead>
+          <tbody id="riderBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+// Default sample data (used until CSV is uploaded)
+const DEFAULT_HUB_DATA = {
+  "Okhla SDD": { total: 240, delivered: 228, pending: 3, attempted: 9, riders: new Set(["R1", "R2", "R3"]) },
+  "Wazirpur SDD": { total: 135, delivered: 128, pending: 2, attempted: 5, riders: new Set(["R4", "R5"]) },
+  "Noida SDD": { total: 110, delivered: 102, pending: 2, attempted: 6, riders: new Set(["R6"]) },
+  "Ghaziabad SDD": { total: 95, delivered: 88, pending: 3, attempted: 4, riders: new Set(["R7"]) },
+  "Dwarka SDD": { total: 85, delivered: 81, pending: 1, attempted: 3, riders: new Set(["R8"]) },
+  "Gurugram SDD": { total: 74, delivered: 68, pending: 2, attempted: 4, riders: new Set(["R9"]) },
+  "Gurugram Clinikally": { total: 50, delivered: 48, pending: 1, attempted: 1, riders: new Set(["R10"]) }
+};
+
+const HUB_PLANS = {
+  "Okhla SDD": 30, "Dwarka SDD": 10, "Wazirpur SDD": 17,
+  "Ghaziabad SDD": 13, "Gurugram SDD": 5, "Gurugram Clinikally": 6, "Noida SDD": 14
+};
+
+let hubData = JSON.parse(JSON.stringify(DEFAULT_HUB_DATA, (k, v) => v instanceof Set ? [...v] : v));
+// Restore Sets after JSON clone
+Object.keys(hubData).forEach(k => {
+  hubData[k].riders = new Set(hubData[k].riders || []);
+});
+
+let riderDetails = [];
+let dataSource = "sample"; // "sample" | "csv"
+
+function showTab(id, btn) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+function getCurrentTimeStr() {
+  const now = new Date();
+  let h = now.getHours();
+  const m = now.getMinutes().toString().padStart(2, '0');
+  const ampm = h >= 12 ? 'pm' : 'am';
+  h = h % 12 || 12;
+  return `${h}:${m} ${ampm}`;
+}
+
+function renderPngReport() {
+  const tbody = document.getElementById('pngTableBody');
+  const tfoot = document.getElementById('pngTableFoot');
+  const timeEl = document.getElementById('pngReportTime');
+  tbody.innerHTML = '';
+  timeEl.textContent = `Time: ${getCurrentTimeStr()}` + (dataSource === 'csv' ? '  •  Data from uploaded CSV' : '  •  Sample data');
+
+  let tPlan = 0, tAct = 0, tIdle = 0, tCheck = 0, tPend = 0, tBfSum = 0, bfCount = 0;
+
+  // Build rows from current hubData
+  const entries = Object.entries(hubData);
+  if (entries.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:30px;color:#64748b;">No data available. Please upload a CSV.</td></tr>`;
+    tfoot.innerHTML = '';
+    return;
+  }
+
+  entries.forEach(([store, d]) => {
+    const planned = HUB_PLANS[store] !== undefined ? HUB_PLANS[store] : 0;
+    const active = d.riders ? d.riders.size : 0;
+    const idle = d.idle !== undefined ? d.idle : 0;           // from CSV if present
+    const checkOut = d.checkOut !== undefined ? d.checkOut : 0; // from CSV if present
+    const pending = d.pending || 0;
+    const diff = active - planned;
+    const oi = idle > 0 ? (pending / idle).toFixed(2) : (pending > 0 ? pending.toFixed(2) : '0.00');
+    
+    // BF calculation: simple backlog factor = pending / max(active, 1)
+    // If CSV provided a bf value, use it
+    let bf = d.bf !== undefined ? d.bf : (active > 0 ? (pending / active) : 0);
+    bf = Number(bf);
+
+    tPlan += planned;
+    tAct += active;
+    tIdle += idle;
+    tCheck += checkOut;
+    tPend += pending;
+    tBfSum += bf;
+    bfCount++;
+
+    const diffClass = diff >= 0 ? 'diff-pos' : 'diff-neg';
+    const totalWithCheckedOut = active + checkOut;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="store-cell">${store}</td>
+      <td>${planned}</td>
+      <td>${active}</td>
+      <td class="${diffClass}">${diff}</td>
+      <td>${idle}</td>
+      <td>${checkOut}</td>
+      <td>${pending}</td>
+      <td>${oi}</td>
+      <td class="bf-highlight">${bf.toFixed(2)}</td>
+      <td>${totalWithCheckedOut}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  const totDiff = tAct - tPlan;
+  const totOI = tIdle > 0 ? (tPend / tIdle).toFixed(2) : (tPend > 0 ? tPend.toFixed(2) : '0.00');
+  const grandTotal = tAct + tCheck;
+  const avgBf = bfCount > 0 ? (tBfSum / bfCount).toFixed(2) : '0.00';
+
+  tfoot.innerHTML = `
+    <td class="store-cell">Total</td>
+    <td>${tPlan}</td>
+    <td>${tAct}</td>
+    <td class="${totDiff >= 0 ? 'diff-pos' : 'diff-neg'}">${totDiff}</td>
+    <td>${tIdle}</td>
+    <td>${tCheck}</td>
+    <td>${tPend}</td>
+    <td>${totOI}</td>
+    <td class="bf-highlight">${avgBf}</td>
+    <td>${grandTotal}</td>
+  `;
+}
+
+function normalizeHub(h) {
+  if (!h) return "Other Hub";
+  const s = h.toLowerCase();
+  if (s.includes("okhla")) return "Okhla SDD";
+  if (s.includes("dwarka")) return "Dwarka SDD";
+  if (s.includes("wazirpur")) return "Wazirpur SDD";
+  if (s.includes("ghaziabad")) return "Ghaziabad SDD";
+  if (s.includes("clinikally")) return "Gurugram Clinikally";
+  if (s.includes("gurugram") || s.includes("gurgaon")) return "Gurugram SDD";
+  if (s.includes("noida")) return "Noida SDD";
+  return h.trim();
+}
+
+function parseCSV(text) {
+  text = text.replace(/^\uFEFF/, ''); // remove BOM
+  const rows = [];
+  let row = [], cur = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { cur += '"'; i++; }
+        else q = false;
+      } else cur += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { row.push(cur.trim()); cur = ''; }
+    else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(cur.trim()); cur = '';
+      if (row.some(x => x !== '')) rows.push(row);
+      row = [];
+    } else cur += c;
+  }
+  row.push(cur.trim());
+  if (row.some(x => x !== '')) rows.push(row);
+  return rows;
+}
+
+function handleDetailedCSV(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = evt => {
+    try {
+      const rows = parseCSV(evt.target.result);
+      if (rows.length < 2) {
+        document.getElementById('statusMsg').innerText = '❌ CSV has no data rows';
+        return;
+      }
+      const headers = rows[0].map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
+      
+      // Flexible column detection
+      const iHub = headers.findIndex(h => h.includes('hub') || h.includes('warehouse') || h.includes('darkstore') || h.includes('store'));
+      const iStatus = headers.findIndex(h => h.includes('status'));
+      const iRider = headers.findIndex(h => h.includes('ridername') || (h.includes('rider') && !h.includes('id')));
+      const iPhone = headers.findIndex(h => h.includes('phone') || h.includes('mobile'));
+      const iIdle = headers.findIndex(h => h.includes('idle'));
+      const iCheckOut = headers.findIndex(h => h.includes('checkout') || h.includes('check_out') || h.includes('checkedout'));
+      const iBf = headers.findIndex(h => h === 'bf' || h.includes('buffer') || h.includes('backlog'));
+      const iPlanned = headers.findIndex(h => h.includes('planned'));
+
+      hubData = {};
+      const rMap = {};
+
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        const hub = normalizeHub(iHub >= 0 ? r[iHub] : 'Other Hub');
+        const status = (iStatus >= 0 ? r[iStatus] : '').toUpperCase();
+        const rName = iRider >= 0 ? r[iRider] : '';
+        const rPhone = iPhone >= 0 ? r[iPhone] : '-';
+
+        if (!hubData[hub]) {
+          hubData[hub] = {
+            total: 0, delivered: 0, pending: 0, attempted: 0,
+            riders: new Set(),
+            idle: 0, checkOut: 0, bf: undefined
+          };
+        }
+        hubData[hub].total++;
+
+        if (status.includes('DELIVERED') && !status.includes('ATTEMPT')) {
+          hubData[hub].delivered++;
+        } else if (status.includes('ATTEMPT') || status.includes('NDR')) {
+          hubData[hub].attempted++;
+        } else {
+          hubData[hub].pending++;
+        }
+
+        // Optional columns (if present in CSV they override)
+        if (iIdle >= 0 && r[iIdle] !== '') {
+          const val = parseInt(r[iIdle], 10);
+          if (!isNaN(val)) hubData[hub].idle = val;
+        }
+        if (iCheckOut >= 0 && r[iCheckOut] !== '') {
+          const val = parseInt(r[iCheckOut], 10);
+          if (!isNaN(val)) hubData[hub].checkOut = val;
+        }
+        if (iBf >= 0 && r[iBf] !== '') {
+          const val = parseFloat(r[iBf]);
+          if (!isNaN(val)) hubData[hub].bf = val;
+        }
+        if (iPlanned >= 0 && r[iPlanned] !== '') {
+          const val = parseInt(r[iPlanned], 10);
+          if (!isNaN(val)) HUB_PLANS[hub] = val; // update plan on the fly
+        }
+
+        if (rName) {
+          hubData[hub].riders.add(rName);
+          const key = rName + '_' + rPhone;
+          if (!rMap[key]) rMap[key] = { name: rName, phone: rPhone, hub: hub, count: 0 };
+          rMap[key].count++;
+        }
+      }
+
+      riderDetails = Object.values(rMap);
+      dataSource = 'csv';
+      renderAll();
+      document.getElementById('statusMsg').innerText = `✅ CSV Processed: ${rows.length - 1} records • PNG Report updated`;
+      // Switch to PNG tab so user sees the result immediately
+      showTab('activePngTab', document.getElementById('tabPngBtn'));
+    } catch (err) {
+      document.getElementById('statusMsg').innerText = `❌ Error: ${err.message}`;
+      console.error(err);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+function renderAll() {
+  // Hub Performance table
+  const tbody = document.getElementById('hubBody');
+  tbody.innerHTML = '';
+  let totOrd = 0, totDel = 0, totPen = 0, totAtt = 0, totalActiveRiders = 0;
+  let i = 1;
+  for (const [name, d] of Object.entries(hubData)) {
+    totOrd += d.total;
+    totDel += d.delivered;
+    totPen += d.pending;
+    totAtt += d.attempted;
+    const actRiders = d.riders ? d.riders.size : 0;
+    totalActiveRiders += actRiders;
+    const planned = HUB_PLANS[name] !== undefined ? HUB_PLANS[name] : '-';
+    const sla = d.total > 0 ? ((d.delivered / d.total) * 100).toFixed(1) : 0;
+    const tagCls = sla >= 90 ? 'green' : (sla >= 75 ? 'yellow' : 'red');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${i++}</td>
+      <td style="font-weight:600; color:var(--accent-blue);">${name}</td>
+      <td>${planned}</td>
+      <td style="font-weight:700;">${actRiders}</td>
+      <td>${d.total}</td>
+      <td style="color:var(--accent-green); font-weight:700;">${d.delivered}</td>
+      <td style="color:var(--accent-yellow);">${d.pending}</td>
+      <td style="color:var(--accent-red);">${d.attempted}</td>
+      <td><span class="status-tag ${tagCls}">${sla}%</span></td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  // KPIs
+  document.getElementById('kOrders').innerText = totOrd;
+  document.getElementById('kDelivered').innerText = totDel;
+  document.getElementById('kPending').innerText = totPen;
+  document.getElementById('kAttempted').innerText = totAtt;
+  document.getElementById('kRiders').innerText = riderDetails.length || totalActiveRiders;
+  document.getElementById('kDelRate').innerText = totOrd > 0 ? `${((totDel / totOrd) * 100).toFixed(1)}% SLA` : '0% SLA';
+
+  renderRiderTable();
+  renderPngReport(); // <-- PNG tab now also uses uploaded data
+}
+
+function renderRiderTable() {
+  const q = document.getElementById('riderFilter').value.toLowerCase();
+  const tbody = document.getElementById('riderBody');
+  tbody.innerHTML = '';
+  const list = riderDetails.length ? riderDetails : [
+    { name: "Rahul Kumar", phone: "9876543210", hub: "Okhla SDD", count: 18 },
+    { name: "Amit Sharma", phone: "9876543211", hub: "Wazirpur SDD", count: 14 }
+  ];
+  const filtered = list.filter(r => r.name.toLowerCase().includes(q) || r.phone.includes(q));
+  filtered.forEach((r, idx) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${idx + 1}</td>
+      <td style="color:var(--accent-blue);">${r.hub}</td>
+      <td style="font-weight:600;">${r.name}</td>
+      <td>${r.phone}</td>
+      <td style="font-weight:700; color:var(--accent-green);">${r.count}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// Initial Load
+renderAll();
+</script>
+</body>
+</html>
