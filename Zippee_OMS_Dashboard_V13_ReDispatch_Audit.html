@@ -4906,7 +4906,7 @@ async function syncNow(reason,isRetry){
   const url=syncUrl();
   if(!url){syncLog('Apps Script URL set nahi hai (Control Tower me URL save karein)',false);return;}
   if(!/^https:\/\/script\.google\.com\/(macros\/s\/|a\/)/.test(url)){syncLog('URL galat lagta hai — /exec wala Web App URL chahiye',false);return;}
-  if(_busy)return;_busy=true;
+  if(_busy){syncLog((reason||'sync')+': pichli sync abhi chal rahi hai, thodi der baad try karein',false);return;}_busy=true;
   const body=JSON.stringify(syncPayload());
   try{
     let ok=false,note='';
@@ -4917,14 +4917,19 @@ async function syncNow(reason,isRetry){
       ok=true;note='Sheet update ho gayi'+(j&&j.updatedAt?' • '+j.updatedAt:'');
     }catch(e1){
       if(e1 instanceof TypeError){ // CORS/network: blind send, cannot read reply
+        let before='';try{const b0=await sheetsJsonp(url);before=String((b0&&b0.updatedAt)||'');}catch(x){}
         await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:body});
-        ok=true;note='Push request bhej di (browser confirmation block karta hai — Google Sheet kholkar verify karein)';
+        await new Promise(r=>setTimeout(r,4000));
+        const a=await sheetsJsonp(url);
+        if(!a||String(a.updatedAt||'')===before||!a.updatedAt)throw new Error('Sheet update confirm nahi hui — Apps Script ko "Anyone" access ke saath naya version deploy karke URL dobara save karein');
+        ok=true;note='Sheet update ho gayi (verified) • '+a.updatedAt;
       }else throw e1;
     }
     _retry=0;syncLog((reason||'sync')+': '+note,ok);
   }catch(e){
     syncLog((reason||'sync')+' fail: '+(e.message||e),false);
     if(_retry<3){const wait=[20,60,180][_retry++]*1000;setTimeout(()=>{_busy=false;syncNow('retry '+_retry,true);},wait);_busy=false;return;}
+    _retry=0;
   }
   _busy=false;
 }
@@ -4943,6 +4948,7 @@ function sheetsJsonp(url){
 async function syncTest(){
   const url=syncUrl();
   if(!url){syncLog('Test: URL set nahi hai',false);return;}
+  if(!/^https:\/\/script\.google\.com\/(macros\/s\/|a\/)/.test(url)){syncLog('Test: URL galat lagta hai — /exec wala Web App URL chahiye',false);return;}
   try{
     const j=await sheetsJsonp(url);
     if(j&&j.ok===false)throw new Error(j.error||'Script error');
@@ -4962,11 +4968,14 @@ function syncAfterUpload(){
 const APPS_SCRIPT=[
 '// Zippee Dashboard sync — paste into Extensions > Apps Script of the target Google Sheet',
 '// Deploy > New deployment > Web app > Execute as: Me, Who has access: Anyone; paste the /exec URL into the dashboard',
-'var SPREADSHEET_ID="1uKdFL4NIFevhxzjsUAaPNc3daim-HlPw", DATA="ZippeeData", VIEW="Hub Summary";',
+'var SPREADSHEET_ID="", DATA="ZippeeData", VIEW="Hub Summary"; // SPREADSHEET_ID khali rakhein agar script usi Sheet me bani hai (Extensions > Apps Script)',
+'function ss_(){return SPREADSHEET_ID?SpreadsheetApp.openById(SPREADSHEET_ID):SpreadsheetApp.getActiveSpreadsheet();}',
 'function output_(obj, callback){var json=JSON.stringify(obj);if(callback && /^[A-Za-z_$][0-9A-Za-z_$]*$/.test(callback)) return ContentService.createTextOutput(callback+"("+json+");").setMimeType(ContentService.MimeType.JAVASCRIPT);return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);}',
 'function doPost(e){',
+'  var lock=null;',
 '  try{',
-'    var b=JSON.parse((e.postData&&e.postData.contents)||"{}"), ss=SpreadsheetApp.openById(SPREADSHEET_ID);',
+'    lock=LockService.getScriptLock(); lock.waitLock(20000);',
+'    var b=JSON.parse((e.postData&&e.postData.contents)||"{}"), ss=ss_();',
 '    if(b.action!=="save" || !b.dashboard) throw new Error("Expected action=save and dashboard payload");',
 '    var sh=ss.getSheetByName(DATA)||ss.insertSheet(DATA);',
 '    var json=JSON.stringify({dashboard:b.dashboard,history:b.history||[]}), rows=[];',
@@ -4976,13 +4985,14 @@ const APPS_SCRIPT=[
 '    var v=ss.getSheetByName(VIEW)||ss.insertSheet(VIEW), d=b.dashboard, out=[["Hub","Planned","Actual","Login %"]];',
 '    (d.hub||[]).forEach(function(h){out.push([h.store||"",Number(h.planned||0),Number(h.actual||0),h.planned?Math.round((h.actual||0)/h.planned*100)+"%":"0%"]);});',
 '    v.clear(); v.getRange(1,1,out.length,4).setValues(out); v.getRange(out.length+2,1).setValue("Data date: "+(d.dataDate||"")+" | Updated: "+at);',
+'    SpreadsheetApp.flush(); lock.releaseLock();',
 '    return output_({ok:true,updatedAt:at});',
-'  }catch(err){return output_({ok:false,error:String(err)});}',
+'  }catch(err){try{if(lock)lock.releaseLock();}catch(x){} return output_({ok:false,error:String(err)});}',
 '}',
 'function doGet(e){',
 '  var cb=(e&&e.parameter&&e.parameter.callback)||"";',
 '  try{',
-'    var ss=SpreadsheetApp.openById(SPREADSHEET_ID), sh=ss.getSheetByName(DATA);',
+'    var ss=ss_(), sh=ss.getSheetByName(DATA);',
 '    if(!sh||sh.getLastRow()<1) return output_({ok:true,empty:true},cb);',
 '    var s=sh.getRange(1,1,sh.getLastRow(),1).getValues().map(function(r){return r[0];}).join("");',
 '    var o=JSON.parse(s); o.ok=true; o.updatedAt=String(sh.getRange(1,3).getValue());',
